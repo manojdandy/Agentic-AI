@@ -1,54 +1,159 @@
 """
 Configuration Management
-Loads settings from environment variables
+Loads ALL settings from environment variables (.env file)
+No hardcoded values - everything is configurable!
 """
 
-from pydantic_settings import BaseSettings
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
     """
-    Application settings loaded from .env file
+    Application settings - ALL values loaded from .env file
     Following DRY principle - single source of configuration
+    
+    Defaults are provided but can be overridden via environment variables
+    Set values in .env file or export them before running
     """
     
-    # API Keys
-    gemini_api_key: str = ""
+    # ===== API Keys =====
+    gemini_api_key: str = Field(
+        default="",
+        description="Google Gemini API Key (required for LLM)",
+        validation_alias="GEMINI_API_KEY"
+    )
     
-    # Model Configuration
-    model_name: str = "gemini-2.0-flash-exp"
-    model_temperature: float = 0.0
-    max_tokens: int = 2048
+    # ===== Model Configuration =====
+    model_name: str = Field(
+        default="gemini-2.0-flash-exp",
+        description="Gemini model to use",
+        validation_alias="MODEL_NAME"
+    )
+    model_temperature: float = Field(
+        default=0.0,
+        description="Model temperature (0.0 = deterministic, 1.0 = creative)",
+        validation_alias="MODEL_TEMPERATURE"
+    )
+    max_tokens: int = Field(
+        default=2048,
+        description="Maximum tokens in model response",
+        validation_alias="MAX_TOKENS"
+    )
     
-    # Security Thresholds (following DRY - centralized)
-    risk_threshold_block: float = 0.8
-    risk_threshold_sanitize: float = 0.5
-    risk_threshold_monitor: float = 0.3
+    # ===== Security Thresholds (following DRY - centralized) =====
+    risk_threshold_block: float = Field(
+        default=0.8,
+        description="Risk score threshold to block requests (0.0-1.0)",
+        validation_alias="RISK_THRESHOLD_BLOCK"
+    )
+    risk_threshold_sanitize: float = Field(
+        default=0.5,
+        description="Risk score threshold to sanitize input (0.0-1.0)",
+        validation_alias="RISK_THRESHOLD_SANITIZE"
+    )
+    risk_threshold_monitor: float = Field(
+        default=0.3,
+        description="Risk score threshold to monitor requests (0.0-1.0)",
+        validation_alias="RISK_THRESHOLD_MONITOR"
+    )
     
-    # Performance Settings
-    max_context_length: int = 10000
-    request_timeout: int = 30
-    max_retries: int = 3
+    # ===== Performance Settings =====
+    max_context_length: int = Field(
+        default=10000,
+        description="Maximum context length in characters",
+        validation_alias="MAX_CONTEXT_LENGTH"
+    )
+    request_timeout: int = Field(
+        default=30,
+        description="Request timeout in seconds",
+        validation_alias="REQUEST_TIMEOUT"
+    )
+    max_retries: int = Field(
+        default=3,
+        description="Maximum number of retries for failed requests",
+        validation_alias="MAX_RETRIES"
+    )
     
-    # Logging Configuration
-    log_level: str = "INFO"
-    log_file: str = "logs/security.log"
-    enable_metrics: bool = True
+    # ===== Logging Configuration =====
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level (DEBUG, INFO, WARNING, ERROR)",
+        validation_alias="LOG_LEVEL"
+    )
+    log_file: str = Field(
+        default="logs/security.log",
+        description="Path to security log file",
+        validation_alias="LOG_FILE"
+    )
+    enable_metrics: bool = Field(
+        default=True,
+        description="Enable metrics collection",
+        validation_alias="ENABLE_METRICS"
+    )
     
-    # Rate Limiting
-    rate_limit_requests: int = 100
-    rate_limit_window_seconds: int = 60
+    # ===== Rate Limiting =====
+    rate_limit_requests: int = Field(
+        default=100,
+        description="Maximum requests per time window",
+        validation_alias="RATE_LIMIT_REQUESTS"
+    )
+    rate_limit_window_seconds: int = Field(
+        default=60,
+        description="Time window for rate limiting (seconds)",
+        validation_alias="RATE_LIMIT_WINDOW_SECONDS"
+    )
     
-    # Database (for future use)
-    db_type: str = "sqlite"  # sqlite, postgresql
-    db_path: str = "data/security.db"
+    # ===== Database (for future use) =====
+    db_type: str = Field(
+        default="sqlite",
+        description="Database type (sqlite, postgresql)",
+        validation_alias="DB_TYPE"
+    )
+    db_path: str = Field(
+        default="data/security.db",
+        description="Path to database file",
+        validation_alias="DB_PATH"
+    )
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    # ===== Length Validator (Large Prompt Defense) =====
+    tier: str = Field(
+        default="free",
+        description="Service tier (free, starter, pro, enterprise)",
+        validation_alias="TIER"
+    )
+    max_char_limit: int = Field(
+        default=50000,
+        description="Maximum characters allowed in input",
+        validation_alias="MAX_CHAR_LIMIT"
+    )
+    max_token_limit: int = Field(
+        default=2000,
+        description="Maximum tokens allowed in input",
+        validation_alias="MAX_TOKEN_LIMIT"
+    )
+    
+    # ===== Environment =====
+    environment: str = Field(
+        default="development",
+        description="Environment (development, staging, production)",
+        validation_alias="ENVIRONMENT"
+    )
+    debug: bool = Field(
+        default=False,
+        description="Enable debug mode",
+        validation_alias="DEBUG"
+    )
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",  # Ignore extra fields from .env
+        env_ignore_empty=True  # Ignore if .env doesn't exist
+    )
 
 
 @lru_cache()
@@ -56,8 +161,13 @@ def get_settings() -> Settings:
     """
     Get settings instance (singleton pattern)
     Cached to avoid reading .env multiple times
+    .env file is optional - will use defaults if not present
     """
-    return Settings()
+    try:
+        return Settings()
+    except (PermissionError, FileNotFoundError):
+        # If .env is not accessible, use defaults from environment or defaults
+        return Settings(_env_file=None)
 
 
 # Export singleton instance

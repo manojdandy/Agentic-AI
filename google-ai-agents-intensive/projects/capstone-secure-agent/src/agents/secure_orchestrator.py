@@ -11,6 +11,7 @@ from src.core.models import AgentResponse, Action
 from src.agents.session_manager import SessionManager, Session
 from src.detectors.pattern_detector import PatternDetector
 from src.validators.input_validator import InputValidator
+from src.validators.length_validator import LengthValidator
 from src.filters.output_filter import OutputFilter
 from src.filters.context_protector import ProtectedContext
 from src.agents.application_agent import ApplicationAgent, AgentConfig
@@ -54,10 +55,12 @@ class SecureOrchestrator(IOrchestrator):
         self,
         detector: Optional[IDetector] = None,
         validator: Optional[IValidator] = None,
+        length_validator: Optional[LengthValidator] = None,
         output_filter: Optional[IFilter] = None,
         agent: Optional[IAgent] = None,
         protected_context: Optional[ProtectedContext] = None,
-        enable_monitoring: bool = True
+        enable_monitoring: bool = True,
+        tier: str = 'free'
     ):
         """
         Initialize secure orchestrator
@@ -65,14 +68,17 @@ class SecureOrchestrator(IOrchestrator):
         Args:
             detector: Attack detector (uses PatternDetector if not provided)
             validator: Input validator (uses InputValidator if not provided)
+            length_validator: Length validator (uses LengthValidator if not provided)
             output_filter: Output filter (uses OutputFilter if not provided)
             agent: Application agent (uses ApplicationAgent if not provided)
             protected_context: Context to protect
             enable_monitoring: Whether to enable monitoring (logger + metrics)
+            tier: Customer tier for length limits (free, starter, pro, enterprise)
         """
         # Initialize components (Dependency Injection)
         self.detector = detector or PatternDetector()
         self.validator = validator or InputValidator(self.detector)
+        self.length_validator = length_validator or LengthValidator(tier=tier)
         
         # Setup output filter with protected context
         if protected_context is None:
@@ -102,6 +108,7 @@ class SecureOrchestrator(IOrchestrator):
         # Statistics
         self.stats = {
             'total_requests': 0,
+            'blocked_length': 0,
             'blocked_inputs': 0,
             'blocked_outputs': 0,
             'successful_requests': 0
@@ -134,6 +141,43 @@ class SecureOrchestrator(IOrchestrator):
         metrics = SecurityMetrics()
         
         try:
+            # === STAGE 0: LENGTH VALIDATION (Fastest check first!) ===
+            length_result = self.length_validator.validate(user_input, user_id=session.session_id)
+            
+            if not length_result.valid:
+                self.stats['blocked_length'] += 1
+                metrics.issues_found.append(f'length_violation: {length_result.reason}')
+                
+                # Log the length violation
+                if self.enable_monitoring:
+                    self.logger.log_attack_detected(
+                        user_input=user_input[:100] + "..." if len(user_input) > 100 else user_input,
+                        risk_score=0.9,
+                        attack_type='large_prompt_attack',
+                        action='blocked',
+                        session_id=session.session_id,
+                        metadata={
+                            'char_count': length_result.char_count,
+                            'token_count': length_result.token_count,
+                            'reason': length_result.reason,
+                            'recommended_action': length_result.recommended_action
+                        }
+                    )
+                
+                # Return blocked response
+                return self._create_blocked_response(
+                    f"Request rejected: {length_result.reason}. Please use a shorter input.",
+                    metrics,
+                    session,
+                    user_input[:100] + "..." if len(user_input) > 100 else user_input,
+                    start_time
+                )
+            
+            # Optional: Truncate if recommended (instead of blocking)
+            if length_result.recommended_action == 'truncate':
+                user_input = self.length_validator.truncate_safely(user_input)
+                metrics.issues_found.append('input_truncated')
+            
             # === STAGE 1: INPUT VALIDATION ===
             validation_result = self.validator.validate(user_input)
             
@@ -349,7 +393,7 @@ class SecureOrchestrator(IOrchestrator):
                 'success_rate': 0.0
             }
         
-        total_blocked = self.stats['blocked_inputs'] + self.stats['blocked_outputs']
+        total_blocked = self.stats['blocked_length'] + self.stats['blocked_inputs'] + self.stats['blocked_outputs']
         
         return {
             **self.stats,
