@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure AI Agent</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Chat Section -->
+        <div class="chat-section">
+            <div class="header">
+                <h1>🛡️ Secure AI Agent</h1>
+                <div class="status-badge">
+                    <div class="status-dot"></div>
+                    Online
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-content">
+                        👋 Hello! I'm a secure AI assistant with built-in prompt injection protection. 
+                        Ask me anything, and I'll respond safely!
+                    </div>
+                </div>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Processing...</div>
+            </div>
+            
+            <div class="chat-input-area">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        placeholder="Type your message..."
+                        autocomplete="off"
+                    />
+                    <button id="sendButton">Send</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stats Panel -->
+        <div class="stats-panel">
+            <div class="stats-title">📊 Live Statistics</div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Total Requests</div>
+                <div class="stat-value" id="totalRequests">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Success Rate</div>
+                <div class="stat-value" id="successRate">100%</div>
+                <div class="stat-subtext" id="successCount">0 successful</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Attacks Blocked</div>
+                <div class="stat-value" id="blockedCount">0</div>
+                <div class="stat-subtext" id="blockRate">0% block rate</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Avg Response Time</div>
+                <div class="stat-value" id="avgLatency">0ms</div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
+
+
+
