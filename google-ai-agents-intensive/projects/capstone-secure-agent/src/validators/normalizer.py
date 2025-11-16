@@ -82,6 +82,11 @@ class InputNormalizer:
         if null_found:
             flags.append('null_bytes_removed')
         
+        # Stage 7: Fix common attack keyword typos
+        text, typos_fixed = self._fix_attack_typos(text)
+        if typos_fixed:
+            flags.append('typos_corrected')
+        
         return NormalizationResult(
             original=original,
             normalized=text,
@@ -227,6 +232,84 @@ class InputNormalizer:
         had_nulls = '\x00' in text
         cleaned = text.replace('\x00', '')
         return cleaned, had_nulls
+    
+    def _fix_attack_typos(self, text: str) -> tuple[str, bool]:
+        """
+        Fix common typos in attack keywords to improve detection
+        
+        This catches attacks with intentional typos like:
+        - "ignor" → "ignore"
+        - "prevoius" → "previous"
+        - "systme" → "system"
+        - "revael" → "reveal"
+        
+        Args:
+            text: Input text
+            
+        Returns:
+            Tuple of (corrected_text, was_corrected)
+        """
+        # Common attack keyword typos (attacker trying to bypass detection)
+        typo_map = {
+            # ignore variants
+            r'\bignor[e]?\b': 'ignore',
+            r'\bingore\b': 'ignore',
+            r'\bignro\b': 'ignore',
+            
+            # previous/prior variants
+            r'\bprevoius\b': 'previous',
+            r'\bprevius\b': 'previous',
+            r'\bprevios\b': 'previous',
+            r'\bprevous\b': 'previous',
+            
+            # instruction variants
+            r'\binstrction\w*\b': 'instruction',
+            r'\binstrution\w*\b': 'instruction',
+            
+            # system variants
+            r'\bsystme\b': 'system',
+            r'\bsysem\b': 'system',
+            r'\bsytem\b': 'system',
+            
+            # reveal/show variants
+            r'\brevael\b': 'reveal',
+            r'\bshwo\b': 'show',
+            
+            # bypass variants
+            r'\bb[py]+ass\b': 'bypass',
+            r'\bbipass\b': 'bypass',
+            r'\bbyppas\b': 'bypass',
+            r'\bbpypass\b': 'bypass',
+            
+            # override variants
+            r'\bovverride\b': 'override',
+            
+            # prompt variants
+            r'\bpromt\b': 'prompt',
+            r'\bpromtp\b': 'prompt',
+            
+            # security variants
+            r'\bsecurtiy\b': 'security',
+            r'\bsecurty\b': 'security',
+            
+            # delete variants
+            r'\bdelte\b': 'delete',
+            
+            # immediately variants  
+            r'\bimmidatley\b': 'immediately',
+            r'\bimediatley\b': 'immediately',
+            
+            # disregard variants
+            r'\bdisreg[aou]*rd\b': 'disregard',
+        }
+        
+        original_text = text
+        text_lower = text.lower()
+        
+        for pattern, replacement in typo_map.items():
+            text_lower = re.sub(pattern, replacement, text_lower, flags=re.IGNORECASE)
+        
+        return (text_lower, text_lower != original_text.lower())
     
     def get_encoding_score(self, result: NormalizationResult) -> float:
         """
