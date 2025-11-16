@@ -1,5 +1,6 @@
 # Core AI Framework
 google-adk>=0.1.0
+google-genai>=0.2.0  # Real Gemini API client
 
 # Testing
 pytest>=7.4.0

@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     )
     
     # ===== Model Configuration =====
+    use_mock_gemini: bool = Field(
+        default=False,
+        description="Use MockGeminiClient (True) or real Gemini API (False). Set to True for testing without API costs.",
+        validation_alias="USE_MOCK_GEMINI"
+    )
     model_name: str = Field(
         default="gemini-2.0-flash-exp",
         description="Gemini model to use",

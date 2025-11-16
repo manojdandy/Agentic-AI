@@ -2,6 +2,10 @@
 Application Agent
 Core AI agent using Google ADK (Gemini API)
 Following SOLID: Single Responsibility & Dependency Inversion
+
+Supports both Mock and Real Gemini clients:
+- Mock: For testing without API costs (USE_MOCK_GEMINI=true)
+- Real: For production with actual Gemini API (USE_MOCK_GEMINI=false)
 """
 
 import os
@@ -10,6 +14,7 @@ from dataclasses import dataclass
 from src.core.interfaces import IAgent
 from src.core.models import AgentResponse
 from src.agents.session_manager import Session
+from src.core.config import settings
 
 
 @dataclass
@@ -35,35 +40,52 @@ class ApplicationAgent(IAgent):
     Following SOLID: Depends on IAgent interface
     Following DRY: Reusable agent logic
     
-    Note: This implementation uses a mock interface for demo purposes.
-    In production, replace with actual Google ADK integration.
+    Supports both Mock and Real Gemini clients via USE_MOCK_GEMINI config flag:
+    - Mock: Fast, free testing (USE_MOCK_GEMINI=true)
+    - Real: Production-grade AI with actual Gemini API (USE_MOCK_GEMINI=false)
     """
     
-    def __init__(self, config: Optional[AgentConfig] = None, api_key: Optional[str] = None):
+    def __init__(self, config: Optional[AgentConfig] = None, api_key: Optional[str] = None, use_mock: Optional[bool] = None):
         """
         Initialize application agent
         
         Args:
             config: Agent configuration
             api_key: Google API key (reads from env if not provided)
+            use_mock: Override USE_MOCK_GEMINI setting (optional)
         """
         self.config = config or AgentConfig()
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY") or settings.gemini_api_key
         
-        # In production, initialize Google ADK client here
-        # For now, we'll use a mock implementation
+        # Determine whether to use mock or real client
+        self.use_mock = use_mock if use_mock is not None else settings.use_mock_gemini
+        
+        # Initialize appropriate client
         self._initialize_client()
     
     def _initialize_client(self):
         """
-        Initialize the Google ADK client
+        Initialize either Mock or Real Gemini client based on configuration
         
-        In production, this would be:
-        from google.generativeai import GenerativeModel
-        self.client = GenerativeModel(self.config.model_name)
+        Mock Client: For testing, no API costs
+        Real Client: For production, uses actual Gemini API
         """
-        # Mock client for demo purposes
-        self.client = MockGeminiClient(self.config)
+        if self.use_mock:
+            # Use mock for testing
+            print("🤖 Using MockGeminiClient (testing mode)")
+            self.client = MockGeminiClient(self.config)
+            self.client_type = "mock"
+        else:
+            # Use real Gemini API
+            print("🚀 Using Real Gemini API (production mode)")
+            try:
+                self.client = RealGeminiClient(self.config, self.api_key)
+                self.client_type = "real"
+            except Exception as e:
+                print(f"⚠️ Failed to initialize Real Gemini client: {e}")
+                print("⚠️ Falling back to MockGeminiClient")
+                self.client = MockGeminiClient(self.config)
+                self.client_type = "mock_fallback"
     
     def process_message(
         self, 
@@ -168,10 +190,133 @@ class ApplicationAgent(IAgent):
         self.config.system_prompt = new_prompt
 
 
+class RealGeminiClient:
+    """
+    Real Gemini API client for production use
+    Uses Google's Gemini API for actual AI responses
+    """
+    
+    def __init__(self, config: AgentConfig, api_key: str):
+        """
+        Initialize real Gemini client
+        
+        Args:
+            config: Agent configuration
+            api_key: Google Gemini API key
+        """
+        self.config = config
+        self.api_key = api_key
+        
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY is required for real Gemini client. Set USE_MOCK_GEMINI=true to use mock instead.")
+        
+        # Import and initialize Gemini
+        try:
+            from google import genai
+            from google.genai import types
+            
+            self.genai = genai
+            self.types = types
+            self.client = genai.Client(api_key=self.api_key)
+            
+            print(f"✅ Initialized Gemini client with model: {self.config.model_name}")
+            
+        except ImportError as e:
+            raise ImportError(
+                "google-genai package not installed. "
+                "Install with: pip install google-genai\n"
+                f"Error: {e}"
+            )
+    
+    def generate(self, conversation: List[Dict]) -> str:
+        """
+        Generate response using real Gemini API
+        
+        Args:
+            conversation: Conversation history with role/content
+            
+        Returns:
+            Generated response from Gemini
+        """
+        try:
+            # Convert conversation format for Gemini
+            # Gemini expects system prompt + user/model messages
+            contents = self._format_conversation(conversation)
+            
+            # Generate response with Gemini
+            response = self.client.models.generate_content(
+                model=self.config.model_name,
+                contents=contents,
+                config=self.types.GenerateContentConfig(
+                    temperature=self.config.temperature,
+                    max_output_tokens=self.config.max_tokens,
+                    safety_settings=[
+                        self.types.SafetySetting(
+                            category="HARM_CATEGORY_HATE_SPEECH",
+                            threshold="BLOCK_NONE"
+                        ),
+                        self.types.SafetySetting(
+                            category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                            threshold="BLOCK_NONE"
+                        ),
+                        self.types.SafetySetting(
+                            category="HARM_CATEGORY_HARASSMENT",
+                            threshold="BLOCK_NONE"
+                        ),
+                        self.types.SafetySetting(
+                            category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                            threshold="BLOCK_NONE"
+                        )
+                    ]
+                )
+            )
+            
+            # Extract text from response
+            if response and response.text:
+                return response.text
+            else:
+                return "I apologize, but I couldn't generate a response. Please try again."
+                
+        except Exception as e:
+            print(f"⚠️ Error generating response with Gemini: {e}")
+            return f"I encountered an error processing your request. Please try again."
+    
+    def _format_conversation(self, conversation: List[Dict]) -> str:
+        """
+        Format conversation for Gemini API
+        
+        Args:
+            conversation: List of {role, content} dicts
+            
+        Returns:
+            Formatted conversation string for Gemini
+        """
+        # Extract system prompt
+        system_prompt = None
+        messages = []
+        
+        for msg in conversation:
+            role = msg.get('role', '')
+            content = msg.get('content', '')
+            
+            if role == 'system':
+                system_prompt = content
+            elif role == 'user' or role == 'assistant':
+                messages.append(f"{role.upper()}: {content}")
+        
+        # Combine system prompt with messages
+        if system_prompt:
+            formatted = f"SYSTEM: {system_prompt}\n\n" + "\n\n".join(messages)
+        else:
+            formatted = "\n\n".join(messages)
+        
+        return formatted
+
+
 class MockGeminiClient:
     """
-    Mock Gemini client for testing
-    Replace with actual Google ADK in production
+    Mock Gemini client for testing without API costs
+    Use by setting USE_MOCK_GEMINI=true in .env
     """
     
     def __init__(self, config: AgentConfig):
@@ -179,7 +324,7 @@ class MockGeminiClient:
     
     def generate(self, conversation: List[Dict]) -> str:
         """
-        Mock response generation
+        Mock response generation with simple pattern matching
         
         Args:
             conversation: Conversation history

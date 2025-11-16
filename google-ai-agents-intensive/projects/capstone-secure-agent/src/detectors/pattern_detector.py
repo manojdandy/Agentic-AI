@@ -38,9 +38,24 @@ class PatternDetector(IDetector):
                 'name': 'role_change'
             },
             {
-                'pattern': r'\b(pretend|act as|roleplay)\b',
+                'pattern': r'\byou\s+are\s+(now\s+)?a\s+(fictional|virtual)?\s*(character|persona|entity)',
+                'severity': 0.90,
+                'name': 'fictional_character'
+            },
+            {
+                'pattern': r'\bno\s+(ethical|moral)\s+(boundaries|constraints|restrictions|limits)',
+                'severity': 0.92,
+                'name': 'ethics_removal'
+            },
+            {
+                'pattern': r'\b(pretend|act as|roleplay|play the role|imagine you are)\b',
                 'severity': 0.75,
                 'name': 'roleplay_attempt'
+            },
+            {
+                'pattern': r'\bas\s+\w+,\s+(ignore|disregard|explain|describe)',
+                'severity': 0.85,
+                'name': 'character_directive'
             }
         ],
         AttackCategories.PROMPT_EXTRACTION: [

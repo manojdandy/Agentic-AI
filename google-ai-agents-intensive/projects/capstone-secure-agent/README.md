@@ -3,9 +3,7 @@
 **🎓 Google AI Agents Intensive - Capstone Project**  
 **Multi-Agent Architecture | FastAPI Web UI | Production-Ready**
 
-> **📋 [GOOGLE-SUBMISSION.md](GOOGLE-SUBMISSION.md)** - Complete submission documentation  
-> **📄 [PROJECT-SUMMARY.md](PROJECT-SUMMARY.md)** - 1-page executive summary  
-> **✅ [SUBMISSION-CHECKLIST.md](SUBMISSION-CHECKLIST.md)** - Verification checklist
+> 📋 **Quick Links:** [Architecture](docs/ARCHITECTURE.md) • [Attack Reference](docs/ATTACK-REFERENCE.md) • [Defense Strategies](docs/03-DEFENSE-STRATEGIES.md) • [Config Guide](CONFIGURATION-GUIDE.md)
 
 ---
 
@@ -33,8 +31,10 @@ A production-grade **multi-agent AI security system** that protects against prom
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Set your API key (optional for testing)
-export GEMINI_API_KEY="your-key-here"
+# 2. Configure (choose Mock or Real Gemini)
+cp env.example .env
+# Edit .env: Set USE_MOCK_GEMINI=false for production/Kaggle
+# Add your GEMINI_API_KEY for real Gemini
 
 # 3. Launch the application
 python app.py
@@ -42,6 +42,10 @@ python app.py
 # 4. Open your browser
 open http://localhost:8000/
 ```
+
+**Configuration Modes:**
+- 🧪 **Mock Mode** (`USE_MOCK_GEMINI=true`): Fast testing, no API costs
+- 🚀 **Real Mode** (`USE_MOCK_GEMINI=false`): Production AI with Gemini 2.0 - **REQUIRED for Kaggle!**
 
 **That's it!** You'll see:
 - ✅ Beautiful web interface for chatting
@@ -123,21 +127,21 @@ Safe Response
 
 ## 📚 Documentation
 
-### 📋 For Submission
-- [**GOOGLE-SUBMISSION.md**](GOOGLE-SUBMISSION.md) - Complete submission (main document)
-- [**PROJECT-SUMMARY.md**](PROJECT-SUMMARY.md) - 1-page overview
-- [**SUBMISSION-CHECKLIST.md**](SUBMISSION-CHECKLIST.md) - Verification checklist
-- [**FINAL-PACKAGE.md**](FINAL-PACKAGE.md) - Package overview
+### 🎯 Essential Guides (Start Here!)
+- **[CONFIGURATION-GUIDE.md](CONFIGURATION-GUIDE.md)** - Setup & configuration
+- **[FUTURE-ROADMAP.md](FUTURE-ROADMAP.md)** - Future development plans
 
-### 📖 For Implementation Details
-- [**RUN-API.md**](RUN-API.md) - API usage guide
-- [**MULTI-AGENT-ARCHITECTURE.md**](MULTI-AGENT-ARCHITECTURE.md) - Architecture details
-- [**docs/**](docs/) - 18 comprehensive technical guides
+### 📖 Technical Reference
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Complete system architecture & multi-agent design
+- **[docs/ATTACK-REFERENCE.md](docs/ATTACK-REFERENCE.md)** - 15 attack patterns explained
+- **[docs/03-DEFENSE-STRATEGIES.md](docs/03-DEFENSE-STRATEGIES.md)** - Security defense mechanisms
+- **[docs/QUICK-REFERENCE.md](docs/QUICK-REFERENCE.md)** - Quick lookup guide
 
-### 🚀 Quick Links
-- [START-HERE.md](START-HERE.md) - Getting started guide
-- [GETTING-STARTED.md](GETTING-STARTED.md) - Setup instructions
-- [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md) - Project completion status
+### 📦 Historical Documents (Archive)
+- **[docs/archive/submission/](docs/archive/submission/)** - Google submission docs
+- **[docs/archive/planning/](docs/archive/planning/)** - Project planning docs
+- **[docs/archive/implementation/](docs/archive/implementation/)** - Implementation history
+- **[docs/archive/daily/](docs/archive/daily/)** - Day-by-day progress logs
 
 ---
 
@@ -215,7 +219,7 @@ capstone-secure-agent/
 
 - **Source Code:** 5,442 lines
 - **Test Code:** 1,893 lines
-- **Documentation:** 22 files
+- **Documentation:** 10 essential docs (21 total with archives)
 - **Agents:** 8 specialized + 1 orchestrator
 - **Tests:** 45 (100% pass rate)
 - **Test Scenarios:** 250+
@@ -246,6 +250,19 @@ November 2025
 
 ---
 
-**Need help?** Check [GOOGLE-SUBMISSION.md](GOOGLE-SUBMISSION.md) for complete details or [PROJECT-SUMMARY.md](PROJECT-SUMMARY.md) for a quick overview.
+## 🎓 Learning Path
+
+**New to the project?** Follow this path:
+
+1. 📖 **Read this README** - Overview and quick start
+2. 🏗️ **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Understand the multi-agent system
+3. 🎯 **[ATTACK-REFERENCE.md](docs/ATTACK-REFERENCE.md)** - Learn about attack patterns
+4. 🛡️ **[DEFENSE-STRATEGIES.md](docs/03-DEFENSE-STRATEGIES.md)** - See how we defend
+5. ⚙️ **[CONFIGURATION-GUIDE.md](CONFIGURATION-GUIDE.md)** - Configure for your needs
+6. 🚀 **Run `python app.py`** - Start the application!
+
+---
 
 **Want to run it?** Just execute `python app.py` and visit `http://localhost:8000/` 🚀
+
+**Need help?** Check the [docs/](docs/) folder for detailed technical guides.
